@@ -3,17 +3,17 @@ import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
 @Entity()
 export class TimeOffRequest {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column()
-  employeeId: string;
+  employeeId!: string;
 
   @Column()
-  locationId: string;
+  locationId!: string;
 
   @Column()
-  daysRequested: number;
+  daysRequested!: number;
 
   @Column({ default: 'PENDING' })
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SYNC_FAILED';
+  status!: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SYNC_FAILED';
 }
