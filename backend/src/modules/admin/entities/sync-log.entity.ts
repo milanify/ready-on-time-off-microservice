@@ -25,6 +25,12 @@ export class SyncLog {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   delta: number;
 
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  previousBalance: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  newBalance: number;
+
   @CreateDateColumn()
   createdAt: Date;
 }

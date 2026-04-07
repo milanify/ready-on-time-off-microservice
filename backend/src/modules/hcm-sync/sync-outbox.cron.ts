@@ -37,8 +37,15 @@ export class SyncOutboxCron {
         request.hcmSyncStatus = HcmSyncStatus.SYNCED;
         await this.requestRepo.save(request);
         this.logger.log(`Successfully synced request ${request.id} to HCM`);
-      } catch (e) {
-        this.logger.error(`Failed to sync request ${request.id} to HCM - will retry next tick.`);
+      } catch (e: any) {
+        const isBadRequest = e.response?.status === 400;
+        if (isBadRequest) {
+           this.logger.error(`Critical Sync Failure for ${request.id}: HCM rejected with 400. Marking as FAILED.`);
+           request.hcmSyncStatus = HcmSyncStatus.FAILED;
+           await this.requestRepo.save(request);
+        } else {
+           this.logger.warn(`Transient Failure syncing ${request.id}: ${e.message}. Will retry.`);
+        }
       }
     }
   }

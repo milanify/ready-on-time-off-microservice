@@ -44,40 +44,43 @@ export class ReconciliationService {
         where: { employeeId, locationId }
       });
 
-      if (!localRecord) {
-        const newRecord = queryRunner.manager.create(LeaveBalance, {
-          employeeId, locationId, balanceDays: hcmBalanceDays, reservedDays: 0
-        });
-        await queryRunner.manager.save(LeaveBalance, newRecord);
+        const previousBalance = localRecord ? Number(localRecord.balanceDays) : 0;
+        const diff = Number(hcmBalanceDays) - previousBalance;
 
-        const log = queryRunner.manager.create(SyncLog, {
-           employeeId, source, action: 'CREATE_FROM_DRIFT', delta: hcmBalanceDays
-        });
-        await queryRunner.manager.save(SyncLog, log);
-        
+        if (diff !== 0 || !localRecord) {
+          const action = localRecord ? 'UPDATE_FROM_DRIFT' : 'CREATE_FROM_DRIFT';
+          this.logger.warn(`Drift detected for ${employeeId}: Local=${previousBalance}, HCM=${hcmBalanceDays}`);
+          
+          if (localRecord) {
+            localRecord.balanceDays = hcmBalanceDays as number;
+            await queryRunner.manager.save(LeaveBalance, localRecord);
+          } else {
+            const newRecord = queryRunner.manager.create(LeaveBalance, {
+              employeeId, locationId, balanceDays: hcmBalanceDays, reservedDays: 0
+            });
+            await queryRunner.manager.save(LeaveBalance, newRecord);
+          }
+
+          // Health Check: balance - reserved should be >= 0
+          const updatedRecord = await queryRunner.manager.findOne(LeaveBalance, { where: { employeeId, locationId } });
+          const isCritical = updatedRecord && (Number(updatedRecord.balanceDays) - Number(updatedRecord.reservedDays) < 0);
+
+          const log = queryRunner.manager.create(SyncLog, {
+             employeeId, 
+             source, 
+             action: isCritical ? 'CRITICAL_DRIFT_DETECTED' : action, 
+             delta: diff,
+             previousBalance,
+             newBalance: hcmBalanceDays
+          });
+          await queryRunner.manager.save(SyncLog, log);
+
+          await queryRunner.commitTransaction();
+          return { reconciled: true, delta: diff, critical: isCritical };
+        }
+
         await queryRunner.commitTransaction();
-        return { reconciled: true, delta: hcmBalanceDays };
-      }
-
-      const diff = Number(hcmBalanceDays) - Number(localRecord.balanceDays);
-
-      if (diff !== 0) {
-        this.logger.warn(`Drift detected for ${employeeId}: Local=${localRecord.balanceDays}, HCM=${hcmBalanceDays}`);
-        
-        localRecord.balanceDays = hcmBalanceDays as number;
-        await queryRunner.manager.save(LeaveBalance, localRecord);
-
-        const log = queryRunner.manager.create(SyncLog, {
-           employeeId, source, action: 'UPDATE_FROM_DRIFT', delta: diff
-        });
-        await queryRunner.manager.save(SyncLog, log);
-
-        await queryRunner.commitTransaction();
-        return { reconciled: true, delta: diff };
-      }
-
-      await queryRunner.commitTransaction();
-      return { reconciled: false, delta: 0 };
+        return { reconciled: false, delta: 0 };
     } catch (e) {
       await queryRunner.rollbackTransaction();
       throw e;
