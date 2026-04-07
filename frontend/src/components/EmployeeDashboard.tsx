@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useActor } from '../context/ActorContext';
 import { apiClient, LeaveBalanceDto, TimeOffRequestDto } from '../api/apiClient';
-import { CalendarDays, Clock, CheckCircle, Ban, Send } from 'lucide-react';
+import { CalendarDays, Clock, CheckCircle, Ban, Send, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 
 export const EmployeeDashboard = () => {
@@ -98,17 +98,32 @@ export const EmployeeDashboard = () => {
              </div>
           </div>
 
-          <h2 style={{ marginBottom: '16px', fontSize: '1.2rem' }}>Request History</h2>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <h2 style={{ margin: 0, fontSize: '1.2rem' }}>Request History</h2>
+            <button 
+              className="btn btn-secondary" 
+              onClick={loadDashboard} 
+              disabled={loading}
+              style={{ padding: '4px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              Refresh
+            </button>
+          </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {requests.length === 0 && <div style={{ color: 'var(--text-muted)' }}>No requests created yet.</div>}
-            {requests.map(req => (
+            {[...requests]
+              .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+              .map(req => (
                <div key={req.id} className="glass-panel" style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                      {getStatusIcon(req.status)}
                      <div>
                        <div style={{ fontWeight: 500 }}>{req.daysRequested} Days Off</div>
-                       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>ID: {req.id.substring(0, 8)} • {req.createdAt ? format(new Date(req.createdAt), 'MMM dd, yyyy') : 'Recently'}</div>
+                       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                         ID: {req.id.substring(0, 8)} • {req.createdAt ? format(new Date(req.createdAt), 'MMM dd, yyyy HH:mm:ss') : 'Recently'}
+                       </div>
                      </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>

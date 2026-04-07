@@ -64,11 +64,17 @@ describe('EmployeeDashboard', () => {
     });
   });
 
-  test('displays existing request history', async () => {
+  test('displays existing request history sorted by newest first with precise timestamps', async () => {
+    const olderDate = '2024-01-01T10:00:00Z';
+    const newerDate = '2024-01-01T12:30:45Z';
+    
     (apiClient.get as jest.Mock).mockImplementation((url) => {
        if (url.includes('/balances')) return Promise.resolve({ data: { availableDays: 20, reservedDays: 0, balanceDays: 20 } });
        if (url === '/requests') return Promise.resolve({ 
-         data: [{ id: 'req-abc', daysRequested: 5, status: 'APPROVED', hcmSyncStatus: 'SYNCED', createdAt: new Date().toISOString() }] 
+         data: [
+           { id: 'req-old', daysRequested: 2, status: 'APPROVED', hcmSyncStatus: 'SYNCED', createdAt: olderDate },
+           { id: 'req-new', daysRequested: 5, status: 'PENDING', hcmSyncStatus: 'UNSYNCED', createdAt: newerDate }
+         ] 
        });
        return Promise.reject(new Error('not found'));
     });
@@ -82,8 +88,25 @@ describe('EmployeeDashboard', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/5 Days Off/i)).toBeInTheDocument();
-      expect(screen.getByText(/APPROVED/i)).toBeInTheDocument();
+      const requestItems = screen.getAllByText(/Days Off/i);
+      expect(requestItems).toHaveLength(2);
+      
+      // The newest one (5 days) should be first
+      expect(requestItems[0]).toHaveTextContent('5 Days Off');
+      expect(requestItems[1]).toHaveTextContent('2 Days Off');
+      
+      // Verify precise timestamp format pattern: MMM dd, yyyy HH:mm:ss
+      // Since the actual hour depends on the runner's timezone, we check for the presence of the minutes/seconds
+      expect(screen.getByText(/Jan 01, 2024 \d{2}:30:45/i)).toBeInTheDocument();
+      expect(screen.getByText(/Jan 01, 2024 \d{2}:00:00/i)).toBeInTheDocument();
+    });
+
+    // Test Refresh Button
+    const refreshBtn = screen.getByText(/Refresh/i);
+    fireEvent.click(refreshBtn);
+    
+    await waitFor(() => {
+      expect(apiClient.get).toHaveBeenCalledTimes(4); // 2 on initial load, 2 on refresh
     });
   });
 });
