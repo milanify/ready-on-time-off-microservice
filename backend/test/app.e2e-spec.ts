@@ -46,6 +46,16 @@ describe('ReadyOn Architecture Test Suite (E2E)', () => {
     await mockServer.close();
   });
 
+  it('0. Validate GET /balances endpoint', async () => {
+     // Request explicitly to check the controller connects
+     const res = await request(app.getHttpServer())
+       .get('/balances/emp-111/US-NY')
+       .expect(200);
+       
+     expect(res.body).toHaveProperty('availableDays');
+     expect(res.body).toHaveProperty('balanceDays');
+  });
+
   it('1. Real-time sync test: Cache aside pull', async () => {
      // 'emp-456' is seeded with 25 days internally on Mock server. We request directly against ReadyOn.
      const res2 = await request(app.getHttpServer())

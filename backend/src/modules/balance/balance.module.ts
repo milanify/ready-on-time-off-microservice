@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { LeaveBalance } from './entities/leave-balance.entity';
 import { BalanceService } from './balance.service';
+import { BalanceController } from './balance.controller';
 import { HcmSyncModule } from '../hcm-sync/hcm-sync.module';
 
 @Module({
@@ -9,6 +10,7 @@ import { HcmSyncModule } from '../hcm-sync/hcm-sync.module';
     TypeOrmModule.forFeature([LeaveBalance]),
     HcmSyncModule,
   ],
+  controllers: [BalanceController],
   providers: [BalanceService],
   exports: [BalanceService],
 })
