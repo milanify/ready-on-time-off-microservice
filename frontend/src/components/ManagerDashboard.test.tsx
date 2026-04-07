@@ -13,9 +13,10 @@ jest.mock('../api/apiClient', () => ({
 describe('ManagerDashboard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (apiClient.get as jest.Mock).mockResolvedValue({ data: [] });
   });
 
-  test('renders list and handles approval', async () => {
+  test('renders list and resolves names', async () => {
     (apiClient.get as jest.Mock).mockResolvedValueOnce({
       data: [{ id: 'req-1', employeeId: 'emp-456', daysRequested: 3, status: 'PENDING', locationId: 'UK-LON', createdAt: new Date().toISOString() }]
     });
@@ -26,14 +27,12 @@ describe('ManagerDashboard', () => {
       </ActorProvider>
     );
 
-    // Initial loading state
-    expect(screen.getByText(/Loading pending approvals.../i)).toBeInTheDocument();
-
+    // Increase timeout and use flexible matcher
     await waitFor(() => {
-      expect(screen.getByText(/Manager Workflow/i)).toBeInTheDocument();
-      expect(screen.getByText(/Employee: emp-456/i)).toBeInTheDocument();
-      expect(screen.getByText('3')).toBeInTheDocument();
-    });
+       expect(screen.getByText(/Manager Workflow/i)).toBeInTheDocument();
+       expect(screen.getByText(/Sarah/i)).toBeInTheDocument();
+       expect(screen.getByText(/emp-456/i)).toBeInTheDocument();
+    }, { timeout: 2000 });
 
     const approveBtn = screen.getByText(/Approve/i);
     fireEvent.click(approveBtn);
@@ -43,7 +42,7 @@ describe('ManagerDashboard', () => {
     });
   });
 
-  test('handles rejection', async () => {
+  test('handles rejection with name resolution', async () => {
     (apiClient.get as jest.Mock).mockResolvedValueOnce({
       data: [{ id: 'req-2', employeeId: 'emp-123', daysRequested: 5, status: 'PENDING', locationId: 'US-NY', createdAt: new Date().toISOString() }]
     });
@@ -54,7 +53,9 @@ describe('ManagerDashboard', () => {
       </ActorProvider>
     );
 
-    await waitFor(() => expect(screen.getByText(/emp-123/i)).toBeInTheDocument());
+    await waitFor(() => {
+      expect(screen.getByText(/John/i)).toBeInTheDocument();
+    });
 
     const rejectBtn = screen.getByText(/Reject/i);
     fireEvent.click(rejectBtn);

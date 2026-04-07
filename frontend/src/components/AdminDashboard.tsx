@@ -8,15 +8,30 @@ export const AdminDashboard = () => {
   const [reconcileLoading, setReconcileLoading] = useState(false);
   const [hcmLog, setHcmLog] = useState('');
   const [driftAmount, setDriftAmount] = useState('5');
+  const [comparison, setComparison] = useState<any>(null);
 
   const targetEmployee = 'emp-456';
   const targetLocation = 'UK-LON';
   const actorName = defaultActors.find(a => a.employeeId === targetEmployee)?.label.split('(')[1]?.replace(')', '') || 'Sarah';
 
+  const fetchComparison = React.useCallback(async () => {
+    try {
+      const res = await apiClient.get(`/admin/compare/${targetEmployee}/${targetLocation}`);
+      setComparison(res.data);
+    } catch (e) {
+      console.error('Comparison fetch failed', e);
+    }
+  }, [targetEmployee, targetLocation]);
+
+  React.useEffect(() => {
+    fetchComparison();
+  }, [fetchComparison]);
+
   const triggerAnniversary = async () => {
     try {
       await mockHcmClient.post(`/mock-hcm/trigger/anniversary/${targetEmployee}`);
       setHcmLog(`✅ Successfully triggered Anniversary drift (+10 days) on mock HCM for ${actorName}. Egress webhook may have synced it automatically!`);
+      setTimeout(fetchComparison, 1000);
     } catch (e: any) {
       setHcmLog(`❌ Anniversary Failed: ${e.message}`);
     }
@@ -25,7 +40,8 @@ export const AdminDashboard = () => {
   const triggerYearReset = async () => {
     try {
       await mockHcmClient.post('/mock-hcm/trigger/year-reset');
-      setHcmLog(`✅ Global Year-End Reset triggered. All HCM balances reset to 20 days and batch sync initiated.`);
+      setHcmLog(`✅ Global Year-End Reset triggered. All HCM balances reset to 30 days.`);
+      setTimeout(fetchComparison, 1000);
     } catch (e: any) {
       setHcmLog(`❌ Reset Failed: ${e.message}`);
     }
@@ -37,7 +53,8 @@ export const AdminDashboard = () => {
         employeeId: targetEmployee,
         amount: parseFloat(driftAmount)
       });
-      setHcmLog(`✅ Manual Drift of ${driftAmount} days injected into HCM for ${actorName}. ReadyOn cache is now drifting!`);
+      setHcmLog(`✅ Manual Drift of ${driftAmount} days injected into HCM for ${actorName}.`);
+      fetchComparison();
     } catch (e: any) {
       setHcmLog(`❌ Drift Injection Failed: ${e.message}`);
     }
@@ -51,6 +68,7 @@ export const AdminDashboard = () => {
         locationId: targetLocation
       });
       setReconcileResult(res.data);
+      fetchComparison();
     } catch (e: any) {
       console.error(e);
       setReconcileResult({ error: e.response?.data?.message || e.message });
@@ -63,8 +81,36 @@ export const AdminDashboard = () => {
     <div className="animate-fade-in">
       <div className="page-header">
         <h1 className="page-title gradient-text">System Reconciliation Engine</h1>
-        <p className="page-subtitle">Trigger Mock HCM anomalies and manually reconcile SQLite cache.</p>
+        <p className="page-subtitle">Verify HCM truth and fix data discrepancies in the SQLite cache.</p>
       </div>
+
+      {comparison && (
+        <div className="glass-panel" style={{ padding: '24px', marginBottom: '40px', border: '1px solid var(--accent-muted)' }}>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+              <TrendingUp className="text-accent" size={24} />
+              <h2 style={{ margin: 0 }}>Drift Visualization: {actorName}</h2>
+           </div>
+           
+           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+              <div style={{ padding: '16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)' }}>
+                 <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '4px' }}>ReadyOn Local Cache</div>
+                 <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{comparison.localBalance} <span style={{ fontSize: '0.9rem', fontWeight: 400, color: 'var(--text-muted)' }}>days</span></div>
+              </div>
+              <div style={{ padding: '16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)' }}>
+                 <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '4px' }}>HCM Truth (Mock)</div>
+                 <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--accent-secondary)' }}>
+                    {comparison.hcmBalance ?? 'Offline'} <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 400 }}>days</span>
+                 </div>
+              </div>
+              <div style={{ padding: '16px', background: (comparison.drift !== 0 && comparison.drift !== null) ? 'rgba(245, 158, 11, 0.1)' : 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)' }}>
+                 <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '4px' }}>Measured Drift</div>
+                 <div style={{ fontSize: '1.5rem', fontWeight: 700, color: comparison.drift !== 0 ? 'var(--warning)' : 'var(--success)' }}>
+                    {comparison.drift && comparison.drift > 0 ? '+' : ''}{comparison.drift ?? '--'} <span style={{ fontSize: '0.9rem', fontWeight: 400, color: 'var(--text-muted)' }}>days</span>
+                 </div>
+              </div>
+           </div>
+        </div>
+      )}
 
       <div className="dashboard-grid">
         <div className="glass-panel" style={{ padding: '32px' }}>

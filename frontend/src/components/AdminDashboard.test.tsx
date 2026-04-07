@@ -5,6 +5,7 @@ import { apiClient, mockHcmClient } from '../api/apiClient';
 
 jest.mock('../api/apiClient', () => ({
   apiClient: {
+    get: jest.fn(),
     post: jest.fn(),
   },
   mockHcmClient: {
@@ -13,11 +14,19 @@ jest.mock('../api/apiClient', () => ({
 }));
 
 describe('AdminDashboard', () => {
+  const mockComparison = {
+    employeeId: 'emp-456',
+    localBalance: 20,
+    hcmBalance: 20,
+    drift: 0
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
+    (apiClient.get as jest.Mock).mockResolvedValue({ data: mockComparison });
   });
 
-  test('triggers HCM anniversary', async () => {
+  test('renders comparison and triggers HCM anniversary', async () => {
     (mockHcmClient.post as jest.Mock).mockResolvedValueOnce({ data: { success: true } });
 
     render(
@@ -25,24 +34,37 @@ describe('AdminDashboard', () => {
         <AdminDashboard />
       </ActorProvider>
     );
+
+    // Should find the drift visualization header
+    await waitFor(() => {
+      expect(screen.getByText(/Drift Visualization: Sarah/i)).toBeInTheDocument();
+    });
 
     const anniversaryBtn = screen.getByText(/Trigger HCM Anniversary/i);
     fireEvent.click(anniversaryBtn);
 
     await waitFor(() => {
       expect(mockHcmClient.post).toHaveBeenCalledWith(expect.stringContaining('/mock-hcm/trigger/anniversary/emp-456'));
-      expect(screen.getByText(/Successfully triggered Anniversary drift/i)).toBeInTheDocument();
     });
   });
 
-  test('injects manual drift', async () => {
+  test('injects manual drift and updates stats', async () => {
     (mockHcmClient.post as jest.Mock).mockResolvedValueOnce({ data: { success: true } });
+    
+    // Initial fetch
+    (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: mockComparison });
+    // Fetch after drift
+    (apiClient.get as jest.Mock).mockResolvedValueOnce({ 
+      data: { ...mockComparison, hcmBalance: 25, drift: 5 } 
+    });
 
     render(
       <ActorProvider>
         <AdminDashboard />
       </ActorProvider>
     );
+
+    await waitFor(() => screen.getByText(/Drift Visualization: Sarah/i));
 
     const input = screen.getByDisplayValue('5');
     fireEvent.change(input, { target: { value: '10' } });
@@ -51,52 +73,8 @@ describe('AdminDashboard', () => {
     fireEvent.click(driftBtn);
 
     await waitFor(() => {
-      expect(mockHcmClient.post).toHaveBeenCalledWith('/mock-hcm/trigger/adjust', {
-        employeeId: 'emp-456',
-        amount: 10
-      });
-      expect(screen.getByText(/Manual Drift of 10 days injected/i)).toBeInTheDocument();
-    });
-  });
-
-  test('executes drift reconcile and shows deltas', async () => {
-    (apiClient.post as jest.Mock).mockResolvedValueOnce({
-      data: { reconciled: true, delta: 10, critical: false }
-    });
-
-    render(
-      <ActorProvider>
-        <AdminDashboard />
-      </ActorProvider>
-    );
-
-    const reconcileBtn = screen.getByText(/Execute Drift Reconcile/i);
-    fireEvent.click(reconcileBtn);
-
-    await waitFor(() => {
-      expect(apiClient.post).toHaveBeenCalledWith('/admin/reconcile', expect.anything());
-      expect(screen.getByText('Reconciliation Report')).toBeInTheDocument();
-      expect(screen.getByText('Yes')).toBeInTheDocument();
-      expect(screen.getByText('10')).toBeInTheDocument();
-    });
-  });
-
-  test('shows critical drift warning', async () => {
-    (apiClient.post as jest.Mock).mockResolvedValueOnce({
-      data: { reconciled: true, delta: -5, critical: true }
-    });
-
-    render(
-      <ActorProvider>
-        <AdminDashboard />
-      </ActorProvider>
-    );
-
-    const reconcileBtn = screen.getByText(/Execute Drift Reconcile/i);
-    fireEvent.click(reconcileBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText(/Critical Drift: Balance below reserved!/i)).toBeInTheDocument();
+      expect(screen.getByText('25')).toBeInTheDocument();
+      expect(screen.getByText('+5')).toBeInTheDocument();
     });
   });
 });

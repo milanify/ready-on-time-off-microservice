@@ -23,8 +23,8 @@ export class HcmService {
 
   // Seeding initial test data
   constructor() {
-    this.balances.set('emp-123', { locationId: 'US-NY', balanceDays: 20, version: 1 });
-    this.balances.set('emp-456', { locationId: 'UK-LON', balanceDays: 25, version: 1 });
+    this.balances.set('emp-123', { locationId: 'US-NY', balanceDays: 30, version: 1 });
+    this.balances.set('emp-456', { locationId: 'UK-LON', balanceDays: 30, version: 1 });
   }
 
   getBalance(employeeId: string, locationId: string): HcmBalance {
@@ -108,7 +108,7 @@ export class HcmService {
 
   async triggerYearReset() {
     for (const [employeeId, record] of this.balances.entries()) {
-      record.balanceDays = 20; // reset
+      record.balanceDays = 30; // reset
       record.version += 1;
       this.balances.set(employeeId, record);
     }

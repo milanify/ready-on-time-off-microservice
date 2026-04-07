@@ -1,10 +1,18 @@
-import { Controller, Post, Body, HttpCode } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, HttpCode } from '@nestjs/common';
 import { ReconciliationService } from './reconciliation.service';
 import { SyncSource } from './entities/sync-log.entity';
 
 @Controller('admin')
 export class AdminController {
   constructor(private readonly reconciliationService: ReconciliationService) {}
+
+  @Get('compare/:employeeId/:locationId')
+  async compare(
+    @Param('employeeId') employeeId: string,
+    @Param('locationId') locationId: string
+  ) {
+    return this.reconciliationService.getComparison(employeeId, locationId);
+  }
 
   @Post('reconcile')
   @HttpCode(200)

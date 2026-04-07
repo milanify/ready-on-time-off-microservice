@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useActor } from '../context/ActorContext';
+import { defaultActors, useActor } from '../context/ActorContext';
 import { apiClient, TimeOffRequestDto } from '../api/apiClient';
 import { Check, X } from 'lucide-react';
 import { format } from 'date-fns';
@@ -8,6 +8,11 @@ export const ManagerDashboard = () => {
   const { actor } = useActor();
   const [requests, setRequests] = useState<TimeOffRequestDto[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const resolveName = (id: string) => {
+    const found = defaultActors.find(a => a.employeeId === id);
+    return found ? found.label.split('(')[1]?.replace(')', '') || id : id;
+  };
 
   const loadRequests = async () => {
     setLoading(true);
@@ -54,8 +59,8 @@ export const ManagerDashboard = () => {
           <div key={req.id} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
                 <div>
-                   <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Employee: {req.employeeId}</h3>
-                   <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>Location: {req.locationId}</p>
+                   <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Employee: {resolveName(req.employeeId)}</h3>
+                   <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>Location: {req.locationId} ({req.employeeId})</p>
                 </div>
                 <span className="badge badge-pending">PENDING</span>
              </div>

@@ -88,4 +88,24 @@ export class ReconciliationService {
       await queryRunner.release();
     }
   }
+
+  async getComparison(employeeId: string, locationId: string) {
+    const local = await this.balanceRepo.findOne({ where: { employeeId, locationId } });
+    let hcmBalance = null;
+    try {
+      const hcmData = await this.hcmClient.fetchBalance(employeeId, locationId);
+      hcmBalance = hcmData.balanceDays;
+    } catch (e: any) {
+      this.logger.error(`Failed to fetch Comparison from HCM: ${e.message}`);
+    }
+
+    return {
+      employeeId,
+      locationId,
+      localBalance: local ? Number(local.balanceDays) : 0,
+      localReserved: local ? Number(local.reservedDays) : 0,
+      hcmBalance,
+      drift: hcmBalance !== null ? hcmBalance - (local ? Number(local.balanceDays) : 0) : null
+    };
+  }
 }
