@@ -35,22 +35,15 @@ A full-stack microservice that manages the lifecycle of employee time-off reques
 
 ### 1. Start the Backend (two processes)
 
-```bash
+````bash
 cd backend
 npm install
 
-# Terminal 1 — Main API server (port 8080)
-npm run dev
-
-# Terminal 2 — Mock HCM server (port 3001)
-npm run dev:mock
-```
-
-Or run both at once:
+Run both Main API server (port 3000) and Mock HCM server (port 3001):
 
 ```bash
 npm run dev:all
-```
+````
 
 ### 2. Start the Frontend
 
@@ -134,7 +127,9 @@ Think of the system as **two separate worlds** that need to stay in sync:
 2. **ReadyOn** (our microservice) — This is the app employees use day-to-day. It keeps a **local copy** of balances in SQLite so employees get instant responses.
 
 ### The Core Problem
+
 When Sarah requests 2 days off on ReadyOn, we need to:
+
 - Check she has enough days (instantly, from our local cache)
 - "Reserve" those days so no one else can double-book them
 - Eventually tell the HCM "hey, deduct 2 days from Sarah"
@@ -158,11 +153,11 @@ ReadyOn's Time-Off module serves as the primary interface for employees to reque
 
 #### User Personas
 
-| Persona | Need | System Behavior |
-|---------|------|-----------------|
+| Persona      | Need                                       | System Behavior                                                |
+| ------------ | ------------------------------------------ | -------------------------------------------------------------- |
 | **Employee** | See accurate balance, get instant feedback | Cache-aside reads from SQLite; sub-millisecond balance lookups |
-| **Manager** | Approve requests knowing data is valid | Local balance validation + pessimistic soft-reservation |
-| **Admin** | Detect and fix data discrepancies | Drift detection engine with full audit trail |
+| **Manager**  | Approve requests knowing data is valid     | Local balance validation + pessimistic soft-reservation        |
+| **Admin**    | Detect and fix data discrepancies          | Drift detection engine with full audit trail                   |
 
 ---
 
@@ -276,6 +271,7 @@ async handleCron() {
 ```
 
 **Key design decisions in this cron:**
+
 - **Transient vs. permanent failures:** 500 errors are retried automatically on the next cron tick. 400 errors (insufficient balance in HCM) are marked `FAILED` permanently.
 - **Batch size limit:** `take: 50` prevents a thundering herd if thousands of requests queue up.
 - **Cancellation handling:** Cancelled requests send a negative deduction (credit) to the HCM.
@@ -419,13 +415,13 @@ The `SyncEvent` entity stores processed event IDs — if the same batch is deliv
 
 #### `leave_balances` — The Local Cache
 
-| Column | Type | Purpose |
-|--------|------|---------|
-| `employeeId` | varchar | Employee identifier |
-| `locationId` | varchar | Geographic dimension (e.g., `UK-LON`) |
-| `balanceDays` | decimal | Total days available (mirrors HCM truth) |
-| `reservedDays` | decimal | Days soft-locked by pending/submitted requests |
-| `version` | integer | Optimistic concurrency control (auto-increment) |
+| Column         | Type    | Purpose                                         |
+| -------------- | ------- | ----------------------------------------------- |
+| `employeeId`   | varchar | Employee identifier                             |
+| `locationId`   | varchar | Geographic dimension (e.g., `UK-LON`)           |
+| `balanceDays`  | decimal | Total days available (mirrors HCM truth)        |
+| `reservedDays` | decimal | Days soft-locked by pending/submitted requests  |
+| `version`      | integer | Optimistic concurrency control (auto-increment) |
 
 **Key constraint:** `UNIQUE(employeeId, locationId)` — one balance per employee per location.
 
@@ -433,16 +429,16 @@ The `version` column uses TypeORM's `@VersionColumn()` for optimistic locking. I
 
 ```typescript
 // backend/src/modules/balance/entities/leave-balance.entity.ts
-@Entity('leave_balances')
-@Unique(['employeeId', 'locationId'])
+@Entity("leave_balances")
+@Unique(["employeeId", "locationId"])
 export class LeaveBalance {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  @Column({ type: "decimal", precision: 10, scale: 2, default: 0 })
   balanceDays: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  @Column({ type: "decimal", precision: 10, scale: 2, default: 0 })
   reservedDays: number;
 
   @VersionColumn()
@@ -452,12 +448,12 @@ export class LeaveBalance {
 
 #### `time_off_requests` — Request Lifecycle
 
-| Column | Type | Purpose |
-|--------|------|---------|
-| `status` | enum | `PENDING` · `APPROVED` · `REJECTED` · `CANCELLED` |
-| `hcmSyncStatus` | enum | `PENDING_SYNC` · `SYNCED` · `FAILED` |
-| `daysRequested` | decimal | Number of days |
-| `createdAt` | datetime | Auto-generated timestamp |
+| Column          | Type     | Purpose                                           |
+| --------------- | -------- | ------------------------------------------------- |
+| `status`        | enum     | `PENDING` · `APPROVED` · `REJECTED` · `CANCELLED` |
+| `hcmSyncStatus` | enum     | `PENDING_SYNC` · `SYNCED` · `FAILED`              |
+| `daysRequested` | decimal  | Number of days                                    |
+| `createdAt`     | datetime | Auto-generated timestamp                          |
 
 The `hcmSyncStatus` is the outbox flag. The cron job queries for `PENDING_SYNC` records and tries to push them to the HCM.
 
@@ -468,11 +464,11 @@ Every drift detection, reconciliation, and balance correction is logged:
 ```typescript
 // backend/src/modules/admin/entities/sync-log.entity.ts
 export enum SyncSource {
-  HCM_BATCH = 'HCM_BATCH',
-  HCM_WEBHOOK = 'HCM_WEBHOOK',
-  HCM_REALTIME = 'HCM_REALTIME',
-  LOCAL_REQUEST = 'LOCAL_REQUEST',
-  ADMIN_RECONCILE = 'ADMIN_RECONCILE',
+  HCM_BATCH = "HCM_BATCH",
+  HCM_WEBHOOK = "HCM_WEBHOOK",
+  HCM_REALTIME = "HCM_REALTIME",
+  LOCAL_REQUEST = "LOCAL_REQUEST",
+  ADMIN_RECONCILE = "ADMIN_RECONCILE",
 }
 ```
 
@@ -488,13 +484,13 @@ A simple table with one column: the event ID. Before processing a batch sync, we
 
 The system uses **three complementary strategies** to keep data in sync. Each handles a different failure mode:
 
-| Strategy | Direction | Trigger | Latency | Use Case |
-|----------|-----------|---------|---------|----------|
-| **Cache-Aside** | ReadyOn → HCM | On first balance read | ~100ms | Cold-start population |
-| **Outbox Cron** | ReadyOn → HCM | Every 10 seconds | ≤10s | Approved request deductions |
-| **Webhook** | HCM → ReadyOn | On HCM event | Real-time | Anniversary, adjustments |
-| **Batch Sync** | HCM → ReadyOn | On HCM push | Bulk | Year-end resets, full refresh |
-| **Admin Reconcile** | Bidirectional | Manual trigger | On-demand | Debugging, drift correction |
+| Strategy            | Direction     | Trigger               | Latency   | Use Case                      |
+| ------------------- | ------------- | --------------------- | --------- | ----------------------------- |
+| **Cache-Aside**     | ReadyOn → HCM | On first balance read | ~100ms    | Cold-start population         |
+| **Outbox Cron**     | ReadyOn → HCM | Every 10 seconds      | ≤10s      | Approved request deductions   |
+| **Webhook**         | HCM → ReadyOn | On HCM event          | Real-time | Anniversary, adjustments      |
+| **Batch Sync**      | HCM → ReadyOn | On HCM push           | Bulk      | Year-end resets, full refresh |
+| **Admin Reconcile** | Bidirectional | Manual trigger        | On-demand | Debugging, drift correction   |
 
 #### How Drift Detection Works
 
@@ -548,27 +544,28 @@ async detectDrift(employeeId, locationId, source, providedHcmBalance?) {
 
 #### Why SQLite Instead of PostgreSQL/MySQL?
 
-| Factor | SQLite | PostgreSQL |
-|--------|--------|------------|
-| Setup complexity | Zero — file-based | Requires server install |
-| Demo portability | `git clone && npm start` | Docker or cloud instance |
-| Concurrency | Single-writer (sufficient for demo) | Full MVCC |
-| Production readiness | ❌ Not suitable | ✅ Production-ready |
+| Factor               | SQLite                              | PostgreSQL               |
+| -------------------- | ----------------------------------- | ------------------------ |
+| Setup complexity     | Zero — file-based                   | Requires server install  |
+| Demo portability     | `git clone && npm start`            | Docker or cloud instance |
+| Concurrency          | Single-writer (sufficient for demo) | Full MVCC                |
+| Production readiness | ❌ Not suitable                     | ✅ Production-ready      |
 
 **Decision:** SQLite was chosen for **demo portability**. The entire app runs with `npm install && npm start` — no Docker, no database server. The TypeORM abstraction means swapping to PostgreSQL in production is a config change:
 
 ```typescript
 // database.module.ts — swap 'sqlite' for 'postgres', add connection string
 TypeOrmModule.forRoot({
-  type: 'sqlite',           // ← change to 'postgres'
-  database: 'data/db.sqlite', // ← change to connection URL
-  synchronize: true,         // ← off in production, use migrations
-})
+  type: "sqlite", // ← change to 'postgres'
+  database: "data/db.sqlite", // ← change to connection URL
+  synchronize: true, // ← off in production, use migrations
+});
 ```
 
 #### Why Outbox Pattern Instead of Synchronous HCM Calls?
 
 **Alternative: Direct synchronous call on approval**
+
 ```
 Manager approves → API calls HCM.deduct() → waits for response → returns
 ```
@@ -576,6 +573,7 @@ Manager approves → API calls HCM.deduct() → waits for response → returns
 **Problem:** If the HCM is down (simulated at 10% failure rate), the approval fails entirely. The manager has to retry manually. Poor UX.
 
 **Chosen: Outbox pattern**
+
 ```
 Manager approves → marks PENDING_SYNC → returns immediately → cron retries
 ```
@@ -584,13 +582,13 @@ Manager approves → marks PENDING_SYNC → returns immediately → cron retries
 
 #### Why Cron-Based Outbox Instead of Message Queue?
 
-| Factor | Cron (chosen) | RabbitMQ/SQS |
-|--------|---------------|--------------|
-| Infrastructure | None — built into NestJS | Separate service to manage |
-| Ordering | Sequential by query | Requires careful ordering |
-| Exactly-once | Via DB status flags | Built-in (with config) |
-| Scale | Single instance | Multi-consumer |
-| Demo simplicity | ✅ | ❌ Overkill for scope |
+| Factor          | Cron (chosen)            | RabbitMQ/SQS               |
+| --------------- | ------------------------ | -------------------------- |
+| Infrastructure  | None — built into NestJS | Separate service to manage |
+| Ordering        | Sequential by query      | Requires careful ordering  |
+| Exactly-once    | Via DB status flags      | Built-in (with config)     |
+| Scale           | Single instance          | Multi-consumer             |
+| Demo simplicity | ✅                       | ❌ Overkill for scope      |
 
 **Decision:** For a microservice handling moderate request volume, a cron polling the database every 10 seconds is simple, debuggable, and sufficient. In production at scale, we'd migrate to a proper message queue.
 
@@ -604,7 +602,7 @@ Manager approves → marks PENDING_SYNC → returns immediately → cron retries
 // backend/src/modules/timeoff/timeoff.service.ts — submitRequest()
 const available = Number(balance.balanceDays) - Number(balance.reservedDays);
 if (available < daysRequested) {
-  throw new BadRequestException('Insufficient balance available locally');
+  throw new BadRequestException("Insufficient balance available locally");
 }
 
 // Soft reserve
@@ -618,14 +616,14 @@ This entire operation runs inside a `DataSource.createQueryRunner()` transaction
 
 ### 8. Trade-offs & Limitations
 
-| Trade-off | Rationale |
-|-----------|-----------|
+| Trade-off                                        | Rationale                                                                                                            |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
 | **Eventual consistency** over strong consistency | HCM can't participate in distributed transactions. We accept a brief window where local and HCM balances may differ. |
-| **Polling cron** over event-driven outbox | Simpler to implement and debug. Adds up to 10s latency to HCM writes. |
-| **SQLite** over a production DB | Demo portability. TypeORM abstraction makes migration trivial. |
-| **No authentication** | Scope decision. Actor/role switching is simulated via dropdown. In production, this would be OAuth2/OIDC. |
-| **In-memory mock HCM** | Resets on restart. Acceptable for demo — proves the integration patterns work. |
-| **No rate limiting** | Not implemented for demo scope. Production would need it on the outbox cron. |
+| **Polling cron** over event-driven outbox        | Simpler to implement and debug. Adds up to 10s latency to HCM writes.                                                |
+| **SQLite** over a production DB                  | Demo portability. TypeORM abstraction makes migration trivial.                                                       |
+| **No authentication**                            | Scope decision. Actor/role switching is simulated via dropdown. In production, this would be OAuth2/OIDC.            |
+| **In-memory mock HCM**                           | Resets on restart. Acceptable for demo — proves the integration patterns work.                                       |
+| **No rate limiting**                             | Not implemented for demo scope. Production would need it on the outbox cron.                                         |
 
 #### Known Limitations
 
@@ -640,45 +638,45 @@ This entire operation runs inside a `DataSource.createQueryRunner()` transaction
 
 ### Time-Off Requests
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/requests` | Submit a new time-off request |
-| `GET` | `/requests?employeeId=X&status=Y` | List requests (filterable) |
-| `GET` | `/requests/:id` | Get single request |
-| `POST` | `/requests/:id/approve` | Manager approves |
-| `POST` | `/requests/:id/reject` | Manager rejects |
-| `DELETE` | `/requests/:id` | Cancel a request |
+| Method   | Endpoint                          | Description                   |
+| -------- | --------------------------------- | ----------------------------- |
+| `POST`   | `/requests`                       | Submit a new time-off request |
+| `GET`    | `/requests?employeeId=X&status=Y` | List requests (filterable)    |
+| `GET`    | `/requests/:id`                   | Get single request            |
+| `POST`   | `/requests/:id/approve`           | Manager approves              |
+| `POST`   | `/requests/:id/reject`            | Manager rejects               |
+| `DELETE` | `/requests/:id`                   | Cancel a request              |
 
 ### Balances
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/balances/:employeeId/:locationId` | Get available balance (cache-aside) |
+| Method | Endpoint                            | Description                         |
+| ------ | ----------------------------------- | ----------------------------------- |
+| `GET`  | `/balances/:employeeId/:locationId` | Get available balance (cache-aside) |
 
 ### HCM Integration (Inbound)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
+| Method | Endpoint          | Description                          |
+| ------ | ----------------- | ------------------------------------ |
 | `POST` | `/hcm/batch-sync` | Receive bulk balance update from HCM |
-| `POST` | `/hcm/webhook` | Receive real-time event from HCM |
+| `POST` | `/hcm/webhook`    | Receive real-time event from HCM     |
 
 ### Admin
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/admin/compare/:empId/:locId` | View local vs HCM balance comparison |
-| `POST` | `/admin/reconcile` | Trigger drift detection + correction |
+| Method | Endpoint                       | Description                          |
+| ------ | ------------------------------ | ------------------------------------ |
+| `GET`  | `/admin/compare/:empId/:locId` | View local vs HCM balance comparison |
+| `POST` | `/admin/reconcile`             | Trigger drift detection + correction |
 
 ### Mock HCM Server (port 3001)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/mock-hcm/balances/:empId/:locId` | Read HCM balance |
-| `POST` | `/mock-hcm/balances/deduct` | Deduct from HCM |
-| `POST` | `/mock-hcm/trigger/anniversary/:empId` | Simulate +10 day bonus |
-| `POST` | `/mock-hcm/trigger/year-reset` | Reset all balances to 30 |
-| `POST` | `/mock-hcm/trigger/batch` | Push all balances to ReadyOn |
-| `POST` | `/mock-hcm/trigger/adjust` | Inject arbitrary drift |
+| Method | Endpoint                               | Description                  |
+| ------ | -------------------------------------- | ---------------------------- |
+| `GET`  | `/mock-hcm/balances/:empId/:locId`     | Read HCM balance             |
+| `POST` | `/mock-hcm/balances/deduct`            | Deduct from HCM              |
+| `POST` | `/mock-hcm/trigger/anniversary/:empId` | Simulate +10 day bonus       |
+| `POST` | `/mock-hcm/trigger/year-reset`         | Reset all balances to 30     |
+| `POST` | `/mock-hcm/trigger/batch`              | Push all balances to ReadyOn |
+| `POST` | `/mock-hcm/trigger/adjust`             | Inject arbitrary drift       |
 
 ---
 
@@ -688,10 +686,10 @@ This entire operation runs inside a `DataSource.createQueryRunner()` transaction
 
 The test suite is designed around the principle that **agentic development demands rigorous testing** — since the code was generated by AI, the tests are the primary quality gate.
 
-| Layer | Tool | What It Validates |
-|-------|------|-------------------|
-| **Backend Unit Tests** | Jest + NestJS Testing | Individual service logic in isolation |
-| **Backend E2E Tests** | Jest + Supertest | Full request lifecycle across real HTTP |
+| Layer                        | Tool                  | What It Validates                          |
+| ---------------------------- | --------------------- | ------------------------------------------ |
+| **Backend Unit Tests**       | Jest + NestJS Testing | Individual service logic in isolation      |
+| **Backend E2E Tests**        | Jest + Supertest      | Full request lifecycle across real HTTP    |
 | **Frontend Component Tests** | React Testing Library | UI rendering, user interactions, data flow |
 
 ### Backend Unit Tests
@@ -713,6 +711,7 @@ Tests:       6 passed, 6 total
 ```
 
 **What these test:** The `BalanceService` is the most critical business logic — it decides whether an employee can take time off. These tests verify:
+
 - Correct arithmetic (including TypeORM's decimal-as-string edge case)
 - Cache-miss behavior (HCM fallback)
 - Boundary conditions (exact balance, insufficient balance)
@@ -780,20 +779,20 @@ All files               |   77.21 |    67.30 |   83.33 |  76.15
 
 **Key test scenarios covered:**
 
-| Component | Test | What It Validates |
-|-----------|------|-------------------|
-| EmployeeDashboard | Balance rendering | Fetches and displays balance from API |
-| EmployeeDashboard | Request modal | Opens modal, submits request, calls API with correct payload |
-| EmployeeDashboard | History sorting | Most recent requests appear first (descending by `createdAt`) |
-| EmployeeDashboard | Precise timestamps | Displays `MMM dd, yyyy HH:mm:ss` format |
-| EmployeeDashboard | Refresh button | Re-fetches data from API on click |
-| ManagerDashboard | Pending rendering | Displays pending requests with employee names |
-| ManagerDashboard | Approve/Reject | Calls correct API endpoint on button click |
-| AdminDashboard | Drift visualization | Renders local vs HCM balance comparison |
-| AdminDashboard | Reconcile | Triggers reconciliation and displays results |
-| Layout | Navigation routing | Dropdown selection routes to correct page |
-| Layout | Role-based nav | Shows/hides nav links based on actor role |
-| Layout | Page refresh sync | Redirects to correct page for default actor on refresh |
+| Component         | Test                | What It Validates                                             |
+| ----------------- | ------------------- | ------------------------------------------------------------- |
+| EmployeeDashboard | Balance rendering   | Fetches and displays balance from API                         |
+| EmployeeDashboard | Request modal       | Opens modal, submits request, calls API with correct payload  |
+| EmployeeDashboard | History sorting     | Most recent requests appear first (descending by `createdAt`) |
+| EmployeeDashboard | Precise timestamps  | Displays `MMM dd, yyyy HH:mm:ss` format                       |
+| EmployeeDashboard | Refresh button      | Re-fetches data from API on click                             |
+| ManagerDashboard  | Pending rendering   | Displays pending requests with employee names                 |
+| ManagerDashboard  | Approve/Reject      | Calls correct API endpoint on button click                    |
+| AdminDashboard    | Drift visualization | Renders local vs HCM balance comparison                       |
+| AdminDashboard    | Reconcile           | Triggers reconciliation and displays results                  |
+| Layout            | Navigation routing  | Dropdown selection routes to correct page                     |
+| Layout            | Role-based nav      | Shows/hides nav links based on actor role                     |
+| Layout            | Page refresh sync   | Redirects to correct page for default actor on refresh        |
 
 ### Running Tests
 
