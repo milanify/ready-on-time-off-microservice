@@ -6,6 +6,18 @@ import { LayoutDashboard, Users, ShieldAlert } from 'lucide-react';
 export const Layout = () => {
   const { actor, setActor } = useActor();
   const navigate = useNavigate();
+  const { pathname } = window.location;
+
+  React.useEffect(() => {
+    // On mount or actor change, ensure the URL matches the role
+    if (actor.role === 'admin' && pathname !== '/admin') {
+      navigate('/admin');
+    } else if (actor.role === 'manager' && pathname !== '/manager') {
+      navigate('/manager');
+    } else if (actor.role === 'employee' && pathname !== '/') {
+      navigate('/');
+    }
+  }, [actor, navigate, pathname]);
 
   return (
     <div className="app-container">
