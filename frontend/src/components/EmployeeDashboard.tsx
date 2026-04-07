@@ -62,81 +62,83 @@ export const EmployeeDashboard = () => {
   };
 
   return (
-    <div className="animate-fade-in">
-      <div className="page-header">
-        <h1 className="page-title gradient-text">Time Off Portal</h1>
-        <p className="page-subtitle">Welcome back, {actor.label.split(' ')[0]}</p>
-      </div>
+    <>
+      <div className="animate-fade-in">
+        <div className="page-header">
+          <h1 className="page-title gradient-text">Time Off Portal</h1>
+          <p className="page-subtitle">Welcome back, {actor.label.split(' ')[0]}</p>
+        </div>
 
-      {loading ? (
-        <div style={{ opacity: 0.5 }}>Loading securely from SQLite cache...</div>
-      ) : (
-        <>
-          <div className="dashboard-grid" style={{ marginBottom: '40px' }}>
-             <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', boxSizing: 'border-box' }}>
-                <h3 style={{ color: 'var(--text-secondary)', marginBottom: '8px' }}>Available Balance</h3>
-                <div style={{ fontSize: '3.5rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '16px' }}>
-                  {balance ? balance.availableDays : '--'} <span style={{fontSize: '1rem', color: 'var(--text-muted)'}}>days</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', fontSize: '0.9rem' }}>
-                   <div>
-                     <div style={{color: 'var(--text-muted)'}}>HCM Source Truth</div>
-                     <div style={{fontWeight: 600}}>{balance ? balance.balanceDays : '--'}</div>
-                   </div>
-                   <div>
-                     <div style={{color: 'var(--text-muted)'}}>Soft Reserved</div>
-                     <div style={{fontWeight: 600}}>{balance ? balance.reservedDays : '--'}</div>
-                   </div>
-                </div>
-             </div>
-
-             <div className="glass-panel" style={{ padding: '32px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                <div style={{ marginBottom: '24px', color: 'var(--text-secondary)' }}>Ready to take a break?</div>
-                <button className="btn btn-primary" onClick={() => setShowModal(true)} style={{ padding: '16px 32px', fontSize: '1.1rem' }}>
-                  <CalendarDays size={20} /> Request Time Off
-                </button>
-             </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <h2 style={{ margin: 0, fontSize: '1.2rem' }}>Request History</h2>
-            <button 
-              className="btn btn-secondary" 
-              onClick={loadDashboard} 
-              disabled={loading}
-              style={{ padding: '4px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-            >
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-              Refresh
-            </button>
-          </div>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {requests.length === 0 && <div style={{ color: 'var(--text-muted)' }}>No requests created yet.</div>}
-            {[...requests]
-              .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-              .map(req => (
-               <div key={req.id} className="glass-panel" style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                     {getStatusIcon(req.status)}
+        {loading ? (
+          <div style={{ opacity: 0.5 }}>Loading securely from SQLite cache...</div>
+        ) : (
+          <>
+            <div className="dashboard-grid" style={{ marginBottom: '40px' }}>
+               <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', boxSizing: 'border-box' }}>
+                  <h3 style={{ color: 'var(--text-secondary)', marginBottom: '8px' }}>Available Balance</h3>
+                  <div style={{ fontSize: '3.5rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '16px' }}>
+                    {balance ? balance.availableDays : '--'} <span style={{fontSize: '1rem', color: 'var(--text-muted)'}}>days</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', fontSize: '0.9rem' }}>
                      <div>
-                       <div style={{ fontWeight: 500 }}>{req.daysRequested} Days Off</div>
-                       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                         ID: {req.id.substring(0, 8)} • {req.createdAt ? format(new Date(req.createdAt), 'MMM dd, yyyy HH:mm:ss') : 'Recently'}
-                       </div>
+                       <div style={{color: 'var(--text-muted)'}}>HCM Source Truth</div>
+                       <div style={{fontWeight: 600}}>{balance ? balance.balanceDays : '--'}</div>
+                     </div>
+                     <div>
+                       <div style={{color: 'var(--text-muted)'}}>Soft Reserved</div>
+                       <div style={{fontWeight: 600}}>{balance ? balance.reservedDays : '--'}</div>
                      </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                     <span className={`badge badge-${req.status.toLowerCase()}`}>{req.status}</span>
-                     <span className={`badge badge-${req.hcmSyncStatus === 'SYNCED' ? 'approved' : req.hcmSyncStatus === 'PENDING_SYNC' ? 'syncing' : 'pending'}`}>
-                       HCM: {req.hcmSyncStatus}
-                     </span>
-                  </div>
                </div>
-            ))}
-          </div>
-        </>
-      )}
+
+               <div className="glass-panel" style={{ padding: '32px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+                  <div style={{ marginBottom: '24px', color: 'var(--text-secondary)' }}>Ready to take a break?</div>
+                  <button className="btn btn-primary" onClick={() => setShowModal(true)} style={{ padding: '16px 32px', fontSize: '1.1rem' }}>
+                    <CalendarDays size={20} /> Request Time Off
+                  </button>
+               </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <h2 style={{ margin: 0, fontSize: '1.2rem' }}>Request History</h2>
+              <button 
+                className="btn btn-secondary" 
+                onClick={loadDashboard} 
+                disabled={loading}
+                style={{ padding: '4px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                Refresh
+              </button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {requests.length === 0 && <div style={{ color: 'var(--text-muted)' }}>No requests created yet.</div>}
+              {[...requests]
+                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                .map(req => (
+                 <div key={req.id} className="glass-panel" style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                       {getStatusIcon(req.status)}
+                       <div>
+                         <div style={{ fontWeight: 500 }}>{req.daysRequested} Days Off</div>
+                         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                           ID: {req.id.substring(0, 8)} • {req.createdAt ? format(new Date(req.createdAt), 'MMM dd, yyyy HH:mm:ss') : 'Recently'}
+                         </div>
+                       </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                       <span className={`badge badge-${req.status.toLowerCase()}`}>{req.status}</span>
+                       <span className={`badge badge-${req.hcmSyncStatus === 'SYNCED' ? 'approved' : req.hcmSyncStatus === 'PENDING_SYNC' ? 'syncing' : 'pending'}`}>
+                         HCM: {req.hcmSyncStatus}
+                       </span>
+                    </div>
+                 </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
 
       {showModal && (
         <div className="modal-overlay">
@@ -163,6 +165,6 @@ export const EmployeeDashboard = () => {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
