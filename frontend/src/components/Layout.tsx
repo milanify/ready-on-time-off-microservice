@@ -1,10 +1,11 @@
 import React from 'react';
-import { Outlet, NavLink } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { defaultActors, useActor } from '../context/ActorContext';
 import { LayoutDashboard, Users, ShieldAlert } from 'lucide-react';
 
 export const Layout = () => {
   const { actor, setActor } = useActor();
+  const navigate = useNavigate();
 
   return (
     <div className="app-container">
@@ -18,10 +19,16 @@ export const Layout = () => {
           <label>Simulate User Role</label>
           <select 
              className="actor-select"
+             data-testid="actor-select"
              value={actor.employeeId} 
              onChange={(e) => {
                const foundActor = defaultActors.find(a => a.employeeId === e.target.value);
-               if (foundActor) setActor(foundActor);
+               if (foundActor) {
+                 setActor(foundActor);
+                 if (foundActor.role === 'admin') navigate('/admin');
+                 else if (foundActor.role === 'manager') navigate('/manager');
+                 else navigate('/');
+               }
              }}
           >
             {defaultActors.map(a => (
