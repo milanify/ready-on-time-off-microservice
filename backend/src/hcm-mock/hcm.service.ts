@@ -116,4 +116,16 @@ export class HcmService {
     this.logger.log('Yearly reset applied to all employees. Triggering batch sync.');
     return this.triggerBatch();
   }
+
+  async adjustBalance(employeeId: string, amount: number) {
+    const record = this.balances.get(employeeId);
+    if (!record) throw new BadRequestException('Employee not found in HCM');
+    
+    record.balanceDays = Number(record.balanceDays) + Number(amount);
+    record.version += 1;
+    this.balances.set(employeeId, record);
+    
+    this.logger.log(`Manual adjustment for ${employeeId}: ${amount > 0 ? '+' : ''}${amount}. New total: ${record.balanceDays}`);
+    return { success: true, employeeId, balanceDays: record.balanceDays };
+  }
 }

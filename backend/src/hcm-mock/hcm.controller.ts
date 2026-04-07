@@ -32,4 +32,9 @@ export class HcmController {
   triggerYearReset() {
     return this.hcmService.triggerYearReset();
   }
+
+  @Post('trigger/adjust')
+  adjustBalance(@Body() body: { employeeId: string; amount: number }) {
+    return this.hcmService.adjustBalance(body.employeeId, body.amount);
+  }
 }
