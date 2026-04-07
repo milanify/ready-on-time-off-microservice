@@ -43,7 +43,7 @@ Run both Main API server (port 3000) and Mock HCM server (port 3001):
 
 ```bash
 npm run dev:all
-````
+```
 
 ### 2. Start the Frontend
 
@@ -837,3 +837,4 @@ This project was built entirely through agentic AI development, as encouraged by
 - **Integration correctness** was proven by the E2E suite that boots both servers and runs real HTTP requests
 
 The rigor of the test suite — particularly the chaos test with configurable error rates — serves as the primary confidence mechanism for agentic-produced code.
+````
