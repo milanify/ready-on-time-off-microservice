@@ -7,19 +7,19 @@ A full-stack microservice that manages the lifecycle of employee time-off reques
 <br/>
 
 <p align="center">
-  <img src="images/sample1.png" width="75%" />
+  <img src="images/sample1.png" width="90%" />
 </p>
 
 <br/>
 
 <p align="center">
-  <img src="images/sample2.png" width="75%" />
+  <img src="images/sample2.png" width="90%" />
 </p>
 
 <br/>
 
 <p align="center">
-  <img src="images/sample3.png" width="75%" />
+  <img src="images/sample3.png" width="90%" />
 </p>
 
 <br/>
