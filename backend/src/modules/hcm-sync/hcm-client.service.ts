@@ -21,4 +21,19 @@ export class HcmClientService {
       throw e;
     }
   }
+
+  async deductBalance(employeeId: string, locationId: string, amount: number) {
+    this.logger.log(`Deducting ${amount} from HCM for ${employeeId}`);
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(`${this.baseUrl}/balances/deduct`, {
+          employeeId, locationId, amount
+        })
+      );
+      return response.data;
+    } catch (e: any) {
+      this.logger.error(`Failed to deduct from HCM: ${e.message}`);
+      throw e;
+    }
+  }
 }

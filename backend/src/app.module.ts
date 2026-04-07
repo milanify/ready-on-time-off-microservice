@@ -1,17 +1,15 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { TimeOffModule } from './timeoff/timeoff.module';
-import { TimeOffRequest } from './timeoff/timeoff.entity';
+import { DatabaseModule } from './database.module';
+import { TimeOffModule } from './modules/timeoff/timeoff.module';
+import { BalanceModule } from './modules/balance/balance.module';
+import { HcmSyncModule } from './modules/hcm-sync/hcm-sync.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'sqlite',
-      database: 'data/db.sqlite',
-      entities: [TimeOffRequest],
-      synchronize: true, // dev only
-    }),
+    DatabaseModule,
     TimeOffModule,
+    BalanceModule,
+    HcmSyncModule,
   ],
 })
 export class AppModule {}
