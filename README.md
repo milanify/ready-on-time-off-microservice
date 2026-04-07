@@ -35,13 +35,12 @@ A full-stack microservice that manages the lifecycle of employee time-off reques
 
 ### 1. Start the Backend (two processes)
 
-````bash
+```bash
 cd backend
 npm install
 
 Run both Main API server (port 3000) and Mock HCM server (port 3001):
 
-```bash
 npm run dev:all
 ```
 
@@ -837,4 +836,3 @@ This project was built entirely through agentic AI development, as encouraged by
 - **Integration correctness** was proven by the E2E suite that boots both servers and runs real HTTP requests
 
 The rigor of the test suite — particularly the chaos test with configurable error rates — serves as the primary confidence mechanism for agentic-produced code.
-````
