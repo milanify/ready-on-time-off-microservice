@@ -11,7 +11,7 @@ export const ManagerDashboard = () => {
 
   const resolveName = (id: string) => {
     const found = defaultActors.find(a => a.employeeId === id);
-    return found ? found.label.split('(')[1]?.replace(')', '') || id : id;
+    return found ? found.label.split('(')[0].trim() || id : id;
   };
 
   const loadRequests = async () => {

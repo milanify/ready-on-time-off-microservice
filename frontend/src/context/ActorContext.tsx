@@ -10,10 +10,10 @@ export interface Actor {
 }
 
 export const defaultActors: Actor[] = [
-  { employeeId: 'emp-456', locationId: 'UK-LON', role: 'employee', label: 'Employee (Sarah)' },
-  { employeeId: 'emp-123', locationId: 'US-NY', role: 'employee', label: 'Employee (John)' },
-  { employeeId: 'manager-1', locationId: 'UK-LON', role: 'manager', label: 'Manager (UK)' },
-  { employeeId: 'admin', locationId: 'GLOBAL', role: 'admin', label: 'System Admin' }
+  { employeeId: 'emp-456', locationId: 'UK-LON', role: 'employee', label: 'Sarah (Employee)' },
+  { employeeId: 'emp-123', locationId: 'US-NY', role: 'employee', label: 'John (Employee)' },
+  { employeeId: 'manager-1', locationId: 'UK-LON', role: 'manager', label: 'UK Manager (Manager)' },
+  { employeeId: 'admin', locationId: 'GLOBAL', role: 'admin', label: 'System Admin (Admin)' }
 ];
 
 interface ActorContextType {

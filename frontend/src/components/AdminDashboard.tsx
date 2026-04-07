@@ -12,7 +12,7 @@ export const AdminDashboard = () => {
 
   const targetEmployee = 'emp-456';
   const targetLocation = 'UK-LON';
-  const actorName = defaultActors.find(a => a.employeeId === targetEmployee)?.label.split('(')[1]?.replace(')', '') || 'Sarah';
+  const actorName = defaultActors.find(a => a.employeeId === targetEmployee)?.label.split('(')[0].trim() || 'Sarah';
 
   const fetchComparison = React.useCallback(async () => {
     try {

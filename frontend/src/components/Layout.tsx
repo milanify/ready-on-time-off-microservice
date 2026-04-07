@@ -1,12 +1,12 @@
 import React from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { defaultActors, useActor } from '../context/ActorContext';
 import { LayoutDashboard, Users, ShieldAlert } from 'lucide-react';
 
 export const Layout = () => {
   const { actor, setActor } = useActor();
   const navigate = useNavigate();
-  const { pathname } = window.location;
+  const { pathname } = useLocation();
 
   React.useEffect(() => {
     // On mount or actor change, ensure the URL matches the role
