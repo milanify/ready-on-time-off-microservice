@@ -34,7 +34,7 @@ describe('ReadyOn Architecture Test Suite (E2E)', () => {
     }).compile();
     
     app = appModuleFixture.createNestApplication();
-    await app.listen(3000);
+    await app.listen(8080);
 
     // Extract instances for manual triggers where needed
     outboxCron = app.get<SyncOutboxCron>(SyncOutboxCron);

@@ -88,7 +88,7 @@ export class HcmService {
     this.logger.log(`Anniversary triggered for ${employeeId}. New balance: ${record.balanceDays}`);
 
     try {
-      await fetch('http://localhost:3000/hcm/webhook', {
+      await fetch('http://localhost:8080/hcm/webhook', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
