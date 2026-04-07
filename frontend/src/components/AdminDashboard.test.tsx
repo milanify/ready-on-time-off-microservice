@@ -232,5 +232,122 @@ describe('AdminDashboard', () => {
         expect(screen.getByText(/System Reconciliation Engine/i)).toBeInTheDocument();
       });
     });
+
+    test('displays API error message when reconciliation fails', async () => {
+      (apiClient.post as jest.Mock).mockRejectedValueOnce({
+        response: { data: { message: 'HCM Unreachable' } }
+      });
+      renderAdmin();
+      await waitFor(() => screen.getByText(/Drift Visualization/i));
+
+      fireEvent.click(screen.getByText(/Execute Drift Reconcile/i));
+
+      await waitFor(() => {
+        expect(screen.getByText(/HCM Unreachable/i)).toBeInTheDocument();
+      });
+    });
+
+    test('displays generic error when reconciliation fails without response data', async () => {
+      (apiClient.post as jest.Mock).mockRejectedValueOnce(new Error('Generic failure'));
+      renderAdmin();
+      await waitFor(() => screen.getByText(/Drift Visualization/i));
+
+      fireEvent.click(screen.getByText(/Execute Drift Reconcile/i));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Generic failure/i)).toBeInTheDocument();
+      });
+    });
+
+    test('displays Critical Drift badge when reconcileResult.critical is true', async () => {
+      (apiClient.post as jest.Mock).mockResolvedValueOnce({
+        data: { reconciled: true, delta: -5, critical: true }
+      });
+      renderAdmin();
+      await waitFor(() => screen.getByText(/Drift Visualization/i));
+
+      fireEvent.click(screen.getByText(/Execute Drift Reconcile/i));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Critical Drift: Balance below reserved!/i)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Mock Action Feedback', () => {
+    test('displays success message after triggering anniversary', async () => {
+      (mockHcmClient.post as jest.Mock).mockResolvedValueOnce({ data: { success: true } });
+      renderAdmin();
+      await waitFor(() => screen.getByText(/Drift Visualization/i));
+
+      fireEvent.click(screen.getByText(/Trigger HCM Anniversary/i));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Successfully triggered Anniversary/i)).toBeInTheDocument();
+      });
+    });
+
+    test('displays success message after global year-end reset', async () => {
+      (mockHcmClient.post as jest.Mock).mockResolvedValueOnce({ data: { success: true } });
+      renderAdmin();
+      await waitFor(() => screen.getByText(/Drift Visualization/i));
+
+      fireEvent.click(screen.getByText(/Global Year-End Reset/i));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Global Year-End Reset triggered/i)).toBeInTheDocument();
+      });
+    });
+
+    test('displays success message after manual drift injection', async () => {
+      (mockHcmClient.post as jest.Mock).mockResolvedValueOnce({ data: { success: true } });
+      renderAdmin();
+      await waitFor(() => screen.getByText(/Drift Visualization/i));
+
+      fireEvent.click(screen.getByText(/Inject Manual Drift/i));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Manual Drift of 5 days injected/i)).toBeInTheDocument();
+      });
+    });
+
+    test('displays error message if HCM anniversary action fails', async () => {
+      (mockHcmClient.post as jest.Mock).mockRejectedValueOnce(new Error('HCM Down'));
+      renderAdmin();
+      await waitFor(() => screen.getByText(/Drift Visualization/i));
+
+      fireEvent.click(screen.getByText(/Trigger HCM Anniversary/i));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Anniversary Failed: HCM Down/i)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('UI Style Specifics', () => {
+    test('renders Zap icon in anniversary button', async () => {
+      renderAdmin();
+      const btn = screen.getByText(/Trigger HCM Anniversary/i);
+      expect(btn.querySelector('svg')).toBeInTheDocument();
+    });
+
+    test('renders TrendingUp icon in drift visualization header', async () => {
+      renderAdmin();
+      await waitFor(() => {
+        // TrendingUp is used in the header
+        const header = screen.getByText(/Drift Visualization/i).parentElement;
+        expect(header?.querySelector('svg')).toBeInTheDocument();
+      });
+    });
+
+    test('disables execute button while reconcile is loading', async () => {
+      (apiClient.post as jest.Mock).mockReturnValue(new Promise(resolve => setTimeout(() => resolve({ data: { reconciled: false } }), 100)));
+      renderAdmin();
+      await waitFor(() => screen.getByText(/Drift Visualization/i));
+
+      fireEvent.click(screen.getByText(/Execute Drift Reconcile/i));
+      expect(screen.getByText(/Reconciling.../i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Reconciling/i })).toBeDisabled();
+    });
   });
 });

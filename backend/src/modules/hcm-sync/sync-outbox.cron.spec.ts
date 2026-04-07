@@ -167,7 +167,6 @@ describe('SyncOutboxCron', () => {
       take: 50,
     });
   });
-
   it('should not call deductBalance for PENDING status requests', async () => {
     const request = {
       id: 'req-pending', status: TimeOffRequestStatus.PENDING,
@@ -180,5 +179,67 @@ describe('SyncOutboxCron', () => {
 
     expect(hcmClient.deductBalance).not.toHaveBeenCalled();
     expect(request.hcmSyncStatus).toEqual(HcmSyncStatus.SYNCED);
+  });
+
+  describe('Complex Failure & Batching Scenarios', () => {
+    it('should ignore non-APPROVED/non-CANCELLED statuses but mark them as SYNCED (idempotency safety)', async () => {
+      // If a request is PENDING_SYNC but status is REJECTED (shouldn't happen with current UI but good for safety)
+      const request = {
+        id: 'req-rej', status: TimeOffRequestStatus.REJECTED,
+        hcmSyncStatus: HcmSyncStatus.PENDING_SYNC,
+        employeeId: 'emp-1', locationId: 'US-NY', daysRequested: 2,
+      } as any;
+      requestRepo.find.mockResolvedValue([request]);
+
+      await cron.handleCron();
+
+      expect(hcmClient.deductBalance).not.toHaveBeenCalled();
+      expect(request.hcmSyncStatus).toEqual(HcmSyncStatus.SYNCED);
+      expect(requestRepo.save).toHaveBeenCalled();
+    });
+
+    it('should treat 429 Too Many Requests as a transient failure and retry later', async () => {
+      const request = {
+        id: 'req-rate', status: TimeOffRequestStatus.APPROVED,
+        hcmSyncStatus: HcmSyncStatus.PENDING_SYNC,
+        employeeId: 'emp-1', locationId: 'US-NY', daysRequested: 1,
+      } as any;
+      requestRepo.find.mockResolvedValue([request]);
+      hcmClient.deductBalance.mockRejectedValue({ response: { status: 429 }, message: 'Rate limit' });
+
+      await cron.handleCron();
+
+      expect(request.hcmSyncStatus).toEqual(HcmSyncStatus.PENDING_SYNC);
+      expect(requestRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('should handle missing error response objects gracefully during sync', async () => {
+      const request = {
+        id: 'req-error', status: TimeOffRequestStatus.APPROVED,
+        hcmSyncStatus: HcmSyncStatus.PENDING_SYNC,
+        employeeId: 'emp-1',
+      } as any;
+      requestRepo.find.mockResolvedValue([request]);
+      hcmClient.deductBalance.mockRejectedValue(new Error('Generic failure'));
+
+      await cron.handleCron();
+
+      expect(request.hcmSyncStatus).toEqual(HcmSyncStatus.PENDING_SYNC); // Should retry
+    });
+
+    it('should maintain sequential integrity in logs even when skipping requests', async () => {
+      const requests = [
+        { id: 'r1', status: TimeOffRequestStatus.APPROVED, hcmSyncStatus: HcmSyncStatus.PENDING_SYNC },
+        { id: 'r2', status: 'UNKNOWN' as any, hcmSyncStatus: HcmSyncStatus.PENDING_SYNC },
+        { id: 'r3', status: TimeOffRequestStatus.CANCELLED, hcmSyncStatus: HcmSyncStatus.PENDING_SYNC },
+      ];
+      requestRepo.find.mockResolvedValue(requests);
+      hcmClient.deductBalance.mockResolvedValue({});
+
+      await cron.handleCron();
+
+      expect(hcmClient.deductBalance).toHaveBeenCalledTimes(2); // r1 and r3
+      expect(requestRepo.save).toHaveBeenCalledTimes(3); // all marked as SYNCED
+    });
   });
 });

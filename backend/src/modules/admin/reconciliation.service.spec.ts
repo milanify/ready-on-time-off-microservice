@@ -233,5 +233,58 @@ describe('ReconciliationService', () => {
       const result = await service.getComparison('emp-1', 'loc-1');
       expect(result.drift).toBe(0);
     });
+
+    it('should handle decimal precision in comparison logic', async () => {
+      balanceRepo.findOne.mockResolvedValue({ balanceDays: '10.25', reservedDays: '1.25' });
+      hcmClient.fetchBalance.mockResolvedValue({ balanceDays: '15.50' });
+
+      const result = await service.getComparison('emp-1', 'loc-1');
+      expect(result.drift).toBe(5.25);
+    });
+  });
+
+  describe('Health Checks & Data Consistency', () => {
+    it('should identify a critical state when drift reduction puts employee in negative available', async () => {
+      // Local: 5 balance, 10 reserved (-5 available)
+      // HCM: 8 balance (still -2 available)
+      queryRunnerManager.findOne
+        .mockResolvedValueOnce({ balanceDays: 5, reservedDays: 10, employeeId: 'emp-1', locationId: 'loc-1' })
+        .mockResolvedValueOnce({ balanceDays: 8, reservedDays: 10, employeeId: 'emp-1', locationId: 'loc-1' });
+
+      const result = await service.detectDrift('emp-1', 'loc-1', SyncSource.HCM_WEBHOOK, 8);
+      expect(result.critical).toBe(true);
+    });
+
+    it('should handle the edge case where providedHcmBalance is zero intentionally', async () => {
+      queryRunnerManager.findOne
+        .mockResolvedValueOnce({ balanceDays: 20, reservedDays: 0, employeeId: 'emp-1', locationId: 'loc-1' })
+        .mockResolvedValueOnce({ balanceDays: 0, reservedDays: 0 });
+
+      const result = await service.detectDrift('emp-1', 'loc-1', SyncSource.ADMIN_RECONCILE, 0);
+      expect(result.reconciled).toBe(true);
+      expect(result.delta).toBe(-20);
+    });
+
+    it('should throw even if one database operation fails during the drift sync', async () => {
+      queryRunnerManager.findOne.mockResolvedValueOnce({ balanceDays: 20, reservedDays: 0 });
+      queryRunnerManager.save.mockRejectedValueOnce(new Error('Persistent store failed'));
+
+      await expect(service.detectDrift('emp-1', 'loc-1', SyncSource.HCM_BATCH, 25))
+        .rejects.toThrow('Persistent store failed');
+      expect(queryRunner.rollbackTransaction).toHaveBeenCalled();
+    });
+
+    it('should log previousBalance=0 when a new employee is created from drift', async () => {
+      queryRunnerManager.findOne.mockResolvedValueOnce(null) // Not found
+        .mockResolvedValueOnce({ balanceDays: 15, reservedDays: 0 });
+
+      await service.detectDrift('new-bee', 'loc-1', SyncSource.HCM_BATCH, 15);
+
+      expect(queryRunnerManager.save).toHaveBeenCalledWith(SyncLog, expect.objectContaining({
+        previousBalance: 0,
+        newBalance: 15,
+        delta: 15
+      }));
+    });
   });
 });

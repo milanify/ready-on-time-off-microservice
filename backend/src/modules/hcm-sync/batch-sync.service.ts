@@ -22,30 +22,36 @@ export class BatchSyncService {
        return { skipped: true, reason: 'Duplicate syncEventId' };
     }
 
-    this.logger.log(`Processing batch push event: ${syncEventId} with ${payload.length} records`);
+    this.logger.log(`Processing batch push event: ${syncEventId} with ${(payload || []).length} records`);
     
     let reconciledCount = 0;
-    for (const record of payload) {
-      const result = await this.reconciliationService.detectDrift(
-         record.employeeId, 
-         record.locationId, 
-         SyncSource.HCM_BATCH, 
-         record.balanceDays
-      );
-      if (result.reconciled) reconciledCount++;
+    const records = Array.isArray(payload) ? payload : [];
+    
+    for (const record of records) {
+      try {
+        const result = await this.reconciliationService.detectDrift(
+           record.employeeId, 
+           record.locationId, 
+           SyncSource.HCM_BATCH, 
+           record.balanceDays
+        );
+        if (result.reconciled) reconciledCount++;
+      } catch (e: any) {
+        this.logger.error(`Failed to process batch record for ${record.employeeId}: ${e.message}`);
+      }
     }
 
     await this.syncEventRepo.save({ id: syncEventId });
-    return { success: true, total: payload.length, reconciled: reconciledCount };
+    return { success: true, total: records.length, reconciled: reconciledCount };
   }
   
   async handleWebhook(payload: any) {
-    if (payload.eventType === 'ANNIVERSARY_CREDIT' || payload.eventType === 'MANUAL_ADJUSTMENT') {
+    if ((payload.eventType === 'ANNIVERSARY_CREDIT' || payload.eventType === 'MANUAL_ADJUSTMENT') && payload.employeeId) {
        await this.reconciliationService.detectDrift(
           payload.employeeId,
           payload.locationId,
           SyncSource.HCM_WEBHOOK,
-          payload.balanceDays
+          payload.balanceDays || 0
        );
     }
     return { success: true };

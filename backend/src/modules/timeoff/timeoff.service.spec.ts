@@ -357,5 +357,68 @@ describe('TimeOffService', () => {
       await service.getRequests('US-NY', TimeOffRequestStatus.APPROVED);
       expect(requestRepo.find).toHaveBeenCalledWith({ where: { locationId: 'US-NY', status: TimeOffRequestStatus.APPROVED } });
     });
+
+    it('should handle repository errors gracefully in getRequests', async () => {
+      requestRepo.find.mockRejectedValue(new Error('Query failed'));
+      await expect(service.getRequests()).rejects.toThrow('Query failed');
+    });
+  });
+
+  describe('Complex State Transitions & Edge Cases', () => {
+    it('should throw BadRequestException if approving an already CANCELLED request', async () => {
+      queryRunnerManager.findOne.mockResolvedValueOnce({
+        id: 'req-1', status: TimeOffRequestStatus.CANCELLED,
+      });
+      await expect(service.approveRequest('req-1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException if rejecting an already APPROVED request', async () => {
+      queryRunnerManager.findOne.mockResolvedValueOnce({
+        id: 'req-1', status: TimeOffRequestStatus.APPROVED,
+      });
+      await expect(service.rejectRequest('req-1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('should return the already CANCELLED request if cancelling it again (idempotent behavior)', async () => {
+      // Note: Current implementation just sets status to CANCELLED. Logic check:
+      const request = { id: 'req-1', status: TimeOffRequestStatus.CANCELLED, employeeId: 'emp-1', locationId: 'loc-1', daysRequested: 5 };
+      queryRunnerManager.findOne.mockResolvedValueOnce(request);
+      
+      const result = await service.cancelRequest('req-1');
+      expect(result.status).toBe(TimeOffRequestStatus.CANCELLED);
+      expect(queryRunnerManager.save).toHaveBeenCalled();
+    });
+
+    it('should handle very large decimal precision safely in requests', async () => {
+      queryRunnerManager.findOne
+        .mockResolvedValueOnce({ id: 'req-1', status: TimeOffRequestStatus.PENDING, employeeId: 'emp-1', locationId: 'loc-1', daysRequested: 0.123456 })
+        .mockResolvedValueOnce({ balanceDays: 20, reservedDays: 0.123456, employeeId: 'emp-1', locationId: 'loc-1' });
+
+      await service.approveRequest('req-1');
+      expect(queryRunnerManager.save).toHaveBeenCalledWith(LeaveBalance, expect.objectContaining({
+        balanceDays: 20 - 0.123456,
+        reservedDays: 0
+      }));
+    });
+
+    it('should handle non-PENDING status error during rejection specifically', async () => {
+      queryRunnerManager.findOne.mockResolvedValueOnce({ id: 'req-1', status: TimeOffRequestStatus.REJECTED });
+      await expect(service.rejectRequest('req-1')).rejects.toThrow('Only PENDING requests can be rejected');
+    });
+
+    it('should handle edge case where balance is found but not enough at approval time (though unlikely due to soft-reservation)', async () => {
+       // This would mean reservedDays logic was bypassed somehow.
+       // Even if balanceDays < daysRequested, the code currently just does the subtraction.
+       // We should verify it does the math correctly.
+       queryRunnerManager.findOne
+        .mockResolvedValueOnce({ id: 'req-1', status: TimeOffRequestStatus.PENDING, employeeId: 'emp-1', locationId: 'loc-1', daysRequested: 10 })
+        .mockResolvedValueOnce({ balanceDays: 5, reservedDays: 10, employeeId: 'emp-1', locationId: 'loc-1' });
+
+       await service.approveRequest('req-1');
+       expect(queryRunnerManager.save).toHaveBeenCalledWith(LeaveBalance, expect.objectContaining({
+         balanceDays: -5,
+         reservedDays: 0
+       }));
+    });
   });
 });

@@ -164,5 +164,46 @@ describe('BatchSyncService', () => {
       const result = await service.handleWebhook({ eventType: 'SOMETHING_ELSE' });
       expect(result.success).toBe(true);
     });
+
+    it('should handle missing employeeId in webhook payload gracefully', async () => {
+      const result = await service.handleWebhook({ eventType: 'ANNIVERSARY_CREDIT', balanceDays: 50 });
+      expect(result.success).toBe(true);
+      expect(reconciliationService.detectDrift).not.toHaveBeenCalled();
+    });
+
+    it('should handle null balanceDays in webhook', async () => {
+      const payload = { eventType: 'MANUAL_ADJUSTMENT', employeeId: 'emp-1', balanceDays: null };
+      await service.handleWebhook(payload as any);
+      expect(reconciliationService.detectDrift).toHaveBeenCalledWith(
+        'emp-1', undefined, SyncSource.HCM_WEBHOOK, 0
+      );
+    });
+
+    it('should propagate errors from detectDrift during webhook processing', async () => {
+      reconciliationService.detectDrift.mockRejectedValue(new Error('DB failure'));
+      const payload = { eventType: 'ANNIVERSARY_CREDIT', employeeId: 'e', balanceDays: 10 };
+      await expect(service.handleWebhook(payload)).rejects.toThrow('DB failure');
+    });
+  });
+
+  describe('Edge Case Combinations', () => {
+    it('should continue processing batch even if one record throws', async () => {
+      syncEventRepo.findOne.mockResolvedValue(null);
+      reconciliationService.detectDrift
+        .mockRejectedValueOnce(new Error('Crash'))
+        .mockResolvedValueOnce({ reconciled: true });
+
+      const payload = [{ employeeId: 'e1' }, { employeeId: 'e2' }];
+      const result = await service.applyIdempotentUpdate('evt_fail_half', payload as any);
+      
+      expect(result.total).toBe(2);
+      expect(result.reconciled).toBe(1);
+    });
+
+    it('should handle non-array payloads in applyIdempotentUpdate', async () => {
+      syncEventRepo.findOne.mockResolvedValue(null);
+      const result = await service.applyIdempotentUpdate('evt_err', {} as any);
+      expect(result.total).toBe(0);
+    });
   });
 });

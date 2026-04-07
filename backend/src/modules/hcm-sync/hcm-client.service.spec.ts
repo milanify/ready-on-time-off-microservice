@@ -92,5 +92,34 @@ describe('HcmClientService', () => {
         { employeeId: 'emp-1', locationId: 'US-NY', amount: -5 }
       );
     });
+
+    it('should handle missing locationId by sending undefined to HCM', async () => {
+      httpService.post.mockReturnValue(of(mockAxiosResponse({ balanceDays: 10 })));
+      await service.deductBalance('emp-1', undefined as any, 5);
+      expect(httpService.post).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ locationId: undefined })
+      );
+    });
+
+    it('should throw when HCM returns 500 status', async () => {
+      const error = { response: { status: 500 }, message: 'Internal Server Error' };
+      httpService.post.mockReturnValue(throwError(() => error));
+      await expect(service.deductBalance('e', 'l', 1)).rejects.toEqual(error);
+    });
+
+    it('should handle malformed response body by returning undefined balanceDays if property missing', async () => {
+      httpService.post.mockReturnValue(of(mockAxiosResponse({ wrongKey: 10 })));
+      const result = await service.deductBalance('e', 'l', 1);
+      expect(result.balanceDays).toBeUndefined();
+    });
+  });
+
+  describe('Health Checks', () => {
+    it('should use localhost:3001 by default', async () => {
+      httpService.get.mockReturnValue(of(mockAxiosResponse({})));
+      await service.fetchBalance('e', 'l');
+      expect(httpService.get).toHaveBeenCalledWith(expect.stringContaining('localhost:3001'));
+    });
   });
 });

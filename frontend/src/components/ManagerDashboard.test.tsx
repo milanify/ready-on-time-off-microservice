@@ -224,12 +224,73 @@ describe('ManagerDashboard', () => {
   // ─── Error Handling ───────────────────────────────────
 
   describe('Error Handling', () => {
+    let consoleSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      consoleSpy.mockRestore();
+    });
+
     test('handles API error on load gracefully', async () => {
       (apiClient.get as jest.Mock).mockRejectedValue(new Error('Network error'));
       renderManager();
 
       await waitFor(() => {
         expect(screen.queryByText(/Loading/i)).not.toBeInTheDocument();
+      });
+      expect(consoleSpy).toHaveBeenCalled();
+    });
+
+    test('shows alert on approve/reject failure', async () => {
+      const alertMock = jest.spyOn(window, 'alert').mockImplementation(() => {});
+      (apiClient.get as jest.Mock).mockResolvedValueOnce({
+        data: [{ id: 'req-fail', employeeId: 'emp-456', daysRequested: 1, status: 'PENDING', locationId: 'UK-LON', createdAt: new Date().toISOString() }]
+      });
+      (apiClient.post as jest.Mock).mockRejectedValueOnce(new Error('Network crash'));
+      renderManager();
+
+      await waitFor(() => screen.getByText(/Sarah/i));
+      fireEvent.click(screen.getByText(/Approve/i));
+
+      await waitFor(() => {
+        expect(alertMock).toHaveBeenCalledWith(expect.stringContaining('Action failed'));
+      });
+      alertMock.mockRestore();
+    });
+  });
+
+  describe('UI Icons & Styles', () => {
+    test('renders Check icon in Approve button', async () => {
+      (apiClient.get as jest.Mock).mockResolvedValueOnce({
+        data: [{ id: 'req-icon1', employeeId: 'emp-456', daysRequested: 1, status: 'PENDING', locationId: 'UK-LON', createdAt: new Date().toISOString() }]
+      });
+      renderManager();
+      await waitFor(() => {
+        const btn = screen.getByText(/Approve/i);
+        expect(btn.querySelector('svg')).toBeInTheDocument();
+      });
+    });
+
+    test('renders X icon in Reject button', async () => {
+      (apiClient.get as jest.Mock).mockResolvedValueOnce({
+        data: [{ id: 'req-icon2', employeeId: 'emp-456', daysRequested: 1, status: 'PENDING', locationId: 'UK-LON', createdAt: new Date().toISOString() }]
+      });
+      renderManager();
+      await waitFor(() => {
+        const btn = screen.getByText(/Reject/i);
+        expect(btn.querySelector('svg')).toBeInTheDocument();
+      });
+    });
+
+    test('has animate-fade-in class for entrance', async () => {
+      (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: [] });
+      renderManager();
+      await waitFor(() => {
+        const div = document.querySelector('.animate-fade-in');
+        expect(div).toBeInTheDocument();
       });
     });
   });
