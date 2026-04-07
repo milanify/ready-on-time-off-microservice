@@ -29,7 +29,7 @@ export const AdminDashboard = () => {
       setReconcileResult(res.data);
     } catch (e: any) {
       console.error(e);
-      setReconcileResult({ error: e.message });
+      setReconcileResult({ error: e.response?.data?.message || e.message });
     } finally {
       setReconcileLoading(false);
     }

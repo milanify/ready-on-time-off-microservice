@@ -7,7 +7,7 @@ export class LeaveBalance {
   id: string;
 
   @Index()
-  @Column('uuid')
+  @Column('varchar')
   employeeId: string;
 
   @Index()

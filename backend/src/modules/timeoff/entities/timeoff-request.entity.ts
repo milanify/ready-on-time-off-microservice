@@ -19,7 +19,7 @@ export class TimeOffRequest {
   id: string;
 
   @Index()
-  @Column('uuid')
+  @Column('varchar')
   employeeId: string;
 
   @Column('varchar')

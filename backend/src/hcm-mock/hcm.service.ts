@@ -64,7 +64,7 @@ export class HcmService {
     }));
 
     try {
-      await fetch('http://localhost:3000/hcm/batch-sync', {
+      await fetch('http://localhost:8080/hcm/batch-sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ syncEventId: `evt_${Date.now()}`, data: payload })

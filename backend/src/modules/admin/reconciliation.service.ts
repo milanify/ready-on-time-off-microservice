@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { LeaveBalance } from '../balance/entities/leave-balance.entity';
@@ -23,8 +23,16 @@ export class ReconciliationService {
     
     if (hcmBalanceDays === undefined) {
       // Pull manually
-      const hcmData = await this.hcmClient.fetchBalance(employeeId, locationId);
-      hcmBalanceDays = hcmData.balanceDays;
+      try {
+        const hcmData = await this.hcmClient.fetchBalance(employeeId, locationId);
+        hcmBalanceDays = hcmData.balanceDays;
+      } catch (e: any) {
+        this.logger.error(`Network failure hitting Mock HCM for drift detection: ${e.message}`);
+        throw new HttpException(
+          `Unable to connect to Mock HCM to verify truth balance for ${employeeId}. Is it running?`, 
+          HttpStatus.BAD_GATEWAY
+        );
+      }
     }
 
     const queryRunner = this.dataSource.createQueryRunner();

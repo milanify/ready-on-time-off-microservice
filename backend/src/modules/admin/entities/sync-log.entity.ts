@@ -13,7 +13,7 @@ export class SyncLog {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   employeeId: string;
 
   @Column({ type: 'varchar', enum: SyncSource })
