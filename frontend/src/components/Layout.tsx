@@ -14,6 +14,22 @@ export const Layout = () => {
           <strong>ReadyOn</strong>
         </div>
 
+        <div className="actor-switch glass-panel" style={{ marginBottom: '32px' }}>
+          <label>Simulate User Role</label>
+          <select 
+             className="actor-select"
+             value={actor.employeeId} 
+             onChange={(e) => {
+               const foundActor = defaultActors.find(a => a.employeeId === e.target.value);
+               if (foundActor) setActor(foundActor);
+             }}
+          >
+            {defaultActors.map(a => (
+              <option key={a.employeeId} value={a.employeeId}>{a.label}</option>
+            ))}
+          </select>
+        </div>
+
         <nav className="sidebar-nav">
           <NavLink to="/" className={({isActive}) => isActive ? 'nav-item active' : 'nav-item'} end>
             <LayoutDashboard size={20} /> My Dashboard
@@ -29,22 +45,6 @@ export const Layout = () => {
              </NavLink>
           )}
         </nav>
-
-        <div className="actor-switch glass-panel">
-          <label>Simulate User Role</label>
-          <select 
-             className="actor-select"
-             value={actor.employeeId} 
-             onChange={(e) => {
-               const foundActor = defaultActors.find(a => a.employeeId === e.target.value);
-               if (foundActor) setActor(foundActor);
-             }}
-          >
-            {defaultActors.map(a => (
-              <option key={a.employeeId} value={a.employeeId}>{a.label}</option>
-            ))}
-          </select>
-        </div>
       </aside>
 
       <main className="main-content">
