@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { LeaveBalance } from '../balance/entities/leave-balance.entity';
 import { SyncLog } from './entities/sync-log.entity';
@@ -9,7 +9,7 @@ import { HcmSyncModule } from '../hcm-sync/hcm-sync.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([LeaveBalance, SyncLog]),
-    HcmSyncModule,
+    forwardRef(() => HcmSyncModule),
   ],
   controllers: [AdminController],
   providers: [ReconciliationService],

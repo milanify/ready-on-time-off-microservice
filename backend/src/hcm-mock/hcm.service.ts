@@ -43,10 +43,11 @@ export class HcmService {
     const record = this.getBalance(employeeId, locationId); // relies on the default creation above
 
     if (record.balanceDays < amount) {
+      this.logger.error(`Insufficient balance in HCM for ${employeeId}. Current: ${record.balanceDays}, Requested: ${amount}`);
       throw new BadRequestException('Insufficient balance in HCM');
     }
 
-    record.balanceDays -= amount;
+    record.balanceDays = Number(record.balanceDays) - Number(amount);
     record.version += 1;
     this.balances.set(employeeId, record);
     
