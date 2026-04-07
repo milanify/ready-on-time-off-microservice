@@ -1,0 +1,55 @@
+import React from 'react';
+import { Outlet, NavLink } from 'react-router-dom';
+import { defaultActors, useActor } from '../context/ActorContext';
+import { LayoutDashboard, Users, ShieldAlert } from 'lucide-react';
+
+export const Layout = () => {
+  const { actor, setActor } = useActor();
+
+  return (
+    <div className="app-container">
+      <aside className="sidebar">
+        <div className="sidebar-brand">
+          <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: 'var(--accent-gradient)' }}></div>
+          <strong>ReadyOn</strong>
+        </div>
+
+        <nav className="sidebar-nav">
+          <NavLink to="/" className={({isActive}) => isActive ? 'nav-item active' : 'nav-item'} end>
+            <LayoutDashboard size={20} /> My Dashboard
+          </NavLink>
+          {actor.role === 'manager' && (
+            <NavLink to="/manager" className={({isActive}) => isActive ? 'nav-item active' : 'nav-item'}>
+               <Users size={20} /> Approvals
+            </NavLink>
+          )}
+          {actor.role === 'admin' && (
+             <NavLink to="/admin" className={({isActive}) => isActive ? 'nav-item active' : 'nav-item'}>
+               <ShieldAlert size={20} /> Reconciliation
+             </NavLink>
+          )}
+        </nav>
+
+        <div className="actor-switch glass-panel">
+          <label>Simulate User Role</label>
+          <select 
+             className="actor-select"
+             value={actor.employeeId} 
+             onChange={(e) => {
+               const foundActor = defaultActors.find(a => a.employeeId === e.target.value);
+               if (foundActor) setActor(foundActor);
+             }}
+          >
+            {defaultActors.map(a => (
+              <option key={a.employeeId} value={a.employeeId}>{a.label}</option>
+            ))}
+          </select>
+        </div>
+      </aside>
+
+      <main className="main-content">
+        <Outlet />
+      </main>
+    </div>
+  );
+};
